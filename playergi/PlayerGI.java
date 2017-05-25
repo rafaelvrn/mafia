@@ -1,7 +1,7 @@
 
-package playergi;
+package mafia.playergi;
 
-import client.GameClient;
+import mafia.client.GameClient;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
