@@ -307,7 +307,7 @@ public class PlayerGI extends Application {
         Platform.runLater(() -> {
             ObservableList<Node> messages = chatBox.getChildren();
         
-            if(messages.size() >= 30) {
+            if(messages.size() >= 40) {
                 messages.remove(0);
             }
 
@@ -357,7 +357,7 @@ public class PlayerGI extends Application {
         stage.show();
         
         try{                               
-            client = new GameClient("localhost", 51438);   
+            client = new GameClient("localhost", 50000);   
             
             loginSubmit.setOnAction(ev -> {
                 int status = client.Register(loginUserField.getText().trim() + " " 
