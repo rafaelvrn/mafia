@@ -17,7 +17,7 @@ public class DatabaseConnection {
     PreparedStatement verificationStatement;
     ResultSet result;
     
-    
+    /*
     public DatabaseConnection(){
         String query;
         this.connection = null;
@@ -43,7 +43,7 @@ public class DatabaseConnection {
             System.out.println("Could not connect to database");            
         }
     }
-    
+    */
     
     public int validateCredentials(String username, String password) {
         return 0;

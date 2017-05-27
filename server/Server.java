@@ -8,7 +8,13 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Scanner;
+import java.util.Set;
 import mafia.persistance.DatabaseConnection;
 
 
@@ -19,16 +25,17 @@ public class Server {
     
     private final ArrayList<ClientHandler> clientHandlers;
     
-    private final HashMap<ClientHandler, String> clients;
+    private final HashMap<ClientHandler, String> connectedClients;
     
     private final DatabaseConnection connection;
     
-    private final GameHandler gameHandler;        
+    private GameHandler gameHandler;        
     
-    public Server() {
-        gameHandler = new GameHandler();          
+    private final int maxPlayers = 3;
+    
+    public Server() {                
         clientHandlers = new ArrayList<>();
-        clients = new HashMap<>();       
+        connectedClients = new HashMap<>();       
         connection = new DatabaseConnection();
     }
     
@@ -39,9 +46,7 @@ public class Server {
     }
     
     public void start() {
-        
-        //gameHandler.start();
-        
+                        
         try {
             serverSocket = new ServerSocket(port);
         } catch (IOException ex) {
@@ -69,16 +74,13 @@ public class Server {
     }
     
     
-    private synchronized boolean addClient(ClientHandler clientHandler, String username) {
+    private synchronized boolean addClientToGame(ClientHandler clientHandler, String username) {
             
-            if(clients.size() >=5) {
+            if(connectedClients.size() >= maxPlayers) {
                 return false;
             } else {
-                clients.put(clientHandler, username);
-                
-                if(clients.size() == 5) {
-                    // Commence game
-                }
+                connectedClients.put(clientHandler, username);
+                                
                 return true;
             }
         }
@@ -114,7 +116,7 @@ public class Server {
                     
                     switch(command) {
                         case "cmd":
-                            gameHandler.performAction(this, input.readLine());
+                            gameHandler.handleRequest(this, input.readLine());
                             break;
                             
                         case "login":                                                        
@@ -135,9 +137,12 @@ public class Server {
                                     output.println("db_error");
                                     break;
                                 case 0:
-                                    joinResult = addClient(this, username);
+                                    joinResult = addClientToGame(this, username);
                                     if(joinResult) {
                                         output.println("join_game");
+                                        if(connectedClients.size() == maxPlayers) {
+                                            gameHandler = new GameHandler(connectedClients);
+                                        }
                                     } else {
                                         output.println("game_is_full");
                                     }
@@ -155,10 +160,10 @@ public class Server {
                             
                             switch(registrationResult){
                                 case 1:
-                                    output.println("db_error");
+                                    output.println("user_exists");
                                     break;
                                 case 2:
-                                    output.println("user_exists");
+                                    output.println("db_error");
                                     break;
                                 case 0:
                                     output.println("reg_success");
@@ -171,20 +176,89 @@ public class Server {
                 }
             }
         }
+        
+        public void sendMessage(String response) {
+            output.println(response);
+        }
     }
     
     
-    private class GameHandler extends Thread {
+    private class GameHandler {
         
+        private final HashMap<ClientHandler, String> playersAlive;
+        private final Set<ClientHandler> players;
+        private final ClientHandler assassin;
         
-        @Override
-        public void run() {
+        private boolean isNighttime = false; 
+                
+        
+        private GameHandler(HashMap<ClientHandler, String> clients) {
+            ClientHandler[] handlers;
+            
+            players = clients.keySet();
+            
+            playersAlive = clients;
+            
+            handlers = playersAlive.keySet().toArray(new ClientHandler[0]);
+            
+            assassin = handlers[(new Random()).nextInt(playersAlive.size())];
+            
+            String playerList = "";
+            for(String name : clients.values()) {
+                playerList += name + " ";
+            }
+            
+            broadcastInitialize(playerList);
+            cycleToNight();
             
         }
         
-        public synchronized void performAction(ClientHandler clientHandler, String action) {
-            
-        } 
         
+        public synchronized void handleRequest(ClientHandler clientHandler, String request) {
+            
+            Scanner parser = new Scanner(request);
+            String response;
+            String head = parser.next();
+            
+            switch(head) {
+                case "msg":                    
+                    response = connectedClients.get(clientHandler) + ":";
+                    response += parser.nextLine();
+                    broadcastMessage(response);
+                    break;
+                default:
+            }
+        }
+        
+        private void broadcastMessage(String message) {
+            if(!isNighttime) {
+                for(ClientHandler player : players) {
+                    player.sendMessage("msg");
+                    player.sendMessage(message);
+                }
+            }
+        }
+        
+        private void broadcastInitialize(String playerList) {
+            for(ClientHandler player : players) {
+                player.sendMessage("init");
+                if(player == assassin) {
+                    player.sendMessage("Assassin");
+                } else {
+                    player.sendMessage("Civillian");
+                }
+                player.sendMessage(playerList);
+            }
+        }
+        
+        private void cycleToNight() {
+            broadcastMessage("It is now nighttime. The assassin will make his move.");
+            isNighttime = true;
+        }
+        
+        private void cycleToDay() {
+            broadcastMessage("It is now daytime.");
+            isNighttime = false;
+        }
     }
 }

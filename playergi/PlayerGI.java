@@ -35,6 +35,7 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import mafia.client.Client;
 
 
 public class PlayerGI extends Application {
@@ -68,16 +69,15 @@ public class PlayerGI extends Application {
     private ScaleTransition waitAnimation;
     
     private Scene scene;
-    
-    private static List<String> players;
-    GameClient client;               
+        
+    Client client;               
     
     /**
      * Creates a list of player cards, containing the names of the players
      * 
      * @param playerNames the names of the players
      */
-    public void createPlayerCards(List<String> playerNames) {
+    public void createPlayerCards(String[] playerNames) {
         
         playerCards = new ArrayList<>();
         
@@ -130,7 +130,7 @@ public class PlayerGI extends Application {
         scrollPane.setContent(chatBox);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        
+        scrollPane.setVvalue(1.0);
        
         chatPane.getChildren().addAll(scrollPane, chatInput);
     }
@@ -329,19 +329,12 @@ public class PlayerGI extends Application {
     /**
      * Creates the visual elements of the application
      */
-    public void buildGUI() {                               
-        
-        createPlayerCards(players);
-        createChatBox();     
+    public void buildGUI() {                              
+                    
         createVoteMenu();   
         createLoginPage();
-        createWaitScreen();
-                
-        gamePane = new VBox(30);
-        gamePane.setPrefSize(1000, 300);            
-        
-        gamePane.getChildren().addAll(playerCardPane, chatPane);
-                
+        createWaitScreen();               
+                        
         root = new StackPane(loginPane);
         scene = new Scene(root, 1000, 680);
     }
@@ -357,40 +350,56 @@ public class PlayerGI extends Application {
         stage.show();
         
         try{                               
-            client = new GameClient("localhost", 50000);   
+            client = new Client(this);   
             
             loginSubmit.setOnAction(ev -> {
-                int status = client.Register(loginUserField.getText().trim() + " " 
-                        + loginPasswordField.getText().trim());
-
-                if(status == 1) {
-                    showWaitScreen();
-                }
-                else {
-                    printLoginErrorMessage("Incorrect username and/or password");
-                }
+                client.login(loginUserField.getText().trim(), 
+                         loginPasswordField.getText().trim());
+                flush();
             });
         
             registerButton.setOnAction(ev -> {
-                int status = client.Login(loginUserField.getText() + " " 
-                        + loginPasswordField.getText());
-
-                if(status == 1) {
-                    printLoginErrorMessage("Registration was successful");
-                }
-                else {
-                    printLoginErrorMessage("Username already exists");
-                }
+                client.register(loginUserField.getText(),
+                        loginPasswordField.getText()); 
+                flush();
             });
         } catch(IOException ex) {
-            printLoginErrorMessage("Cannot connect to server");
+            
+            loginSubmit.setOnAction(ev -> {
+                printLoginErrorMessage("Cannot connect to server");     
+                flush();
+            });
+        
+            registerButton.setOnAction(ev -> {
+                printLoginErrorMessage("Cannot connect to server");     
+                flush();
+            });
+        }                       
+        
+    }
+    
+    public void commenceGame(String role, String[] players) {
+        
+        createPlayerCards(players);
+        createChatBox(); 
+        
+        printMessage("The game has started.");
+        printMessage("You are " + (role.equals("Assassin") ? "the " : "a ") + role + ".");
+        
+        gamePane = new VBox(30);
+        gamePane.setPrefSize(1000, 300);            
+        
+        gamePane.getChildren().addAll(playerCardPane, chatPane);
+        
+        for(PlayerCard playerCard : playerCards) {
+            playerCard.setOnMouseClicked(ev -> {
+                
+            });
         }
         
-        
-        
-        
         chatInput.setOnAction(ev -> {
-            
+            client.sendMessage(chatInput.getText());
+            chatInput.clear();
         });
         
         voteGuilty.setOnAction(ev -> {
@@ -400,23 +409,15 @@ public class PlayerGI extends Application {
         voteNotGuilty.setOnAction(ev -> {
             
         });
-        /*
-        for(PlayerCard playerCard : playerCards) {
-            playerCard.setOnMouseClicked(ev -> {
-                client.sendMsg(playerCard.getPlayerName());
-            });
-        }*/
     }
     
+    public void flush() {
+        loginUserField.clear();
+        loginPasswordField.clear();
+    }
     
     public static void main(String[] args) {
-        
-        players = new ArrayList<>();
-        
-        for(int i = 1; i <= 8; i++) {
-            players.add("Player " + i);
-        }
-        
+                        
         launch(args);     
         
     }
