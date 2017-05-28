@@ -49,6 +49,7 @@ public class PlayerGI extends Application {
     private VBox chatPane;
     private VBox chatBox;
     private TextField chatInput;
+    private ScrollPane chatScrollPane;
     
     private StackPane votePane;
     private Text voteMessage;
@@ -67,6 +68,10 @@ public class PlayerGI extends Application {
     private StackPane waitPane;
     private Text waitText;
     private ScaleTransition waitAnimation;
+    
+    private VBox namePanel;
+    private Text name;
+    private Text role;
     
     private Scene scene;
         
@@ -111,9 +116,7 @@ public class PlayerGI extends Application {
      * Creates a chat box and a chat input field
      */
     public void createChatBox() {
-        
-        ScrollPane scrollPane;
-        
+                       
         chatPane = new VBox();           
         chatPane.setAlignment(Pos.CENTER);        
                         
@@ -122,17 +125,17 @@ public class PlayerGI extends Application {
         chatInput = new TextField();
         chatInput.setMaxWidth(600);
         
-        scrollPane = new ScrollPane();
-        scrollPane.setPrefHeight(250);
-        scrollPane.setBorder(new Border(new BorderStroke(Color.BLACK, 
+        chatScrollPane = new ScrollPane();
+        chatScrollPane.setPrefHeight(250);
+        chatScrollPane.setBorder(new Border(new BorderStroke(Color.BLACK, 
                 BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderWidths.DEFAULT)));
-        scrollPane.setMaxWidth(600);
-        scrollPane.setContent(chatBox);
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scrollPane.setVvalue(1.0);
-       
-        chatPane.getChildren().addAll(scrollPane, chatInput);
+        chatScrollPane.setMaxWidth(600);
+        chatScrollPane.setContent(chatBox);
+        chatScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        chatScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        chatScrollPane.vvalueProperty().bind(chatBox.heightProperty());
+               
+        chatPane.getChildren().addAll(chatScrollPane, chatInput);
     }
     
     
@@ -231,6 +234,27 @@ public class PlayerGI extends Application {
     }
     
     
+    public void createNamePanel() {
+        
+        namePanel = new VBox();
+        namePanel.setAlignment(Pos.CENTER);
+        namePanel.setBorder(new Border(new BorderStroke(Color.BLACK, 
+                BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderWidths.DEFAULT)));
+        namePanel.setMaxHeight(100);
+        namePanel.setMaxWidth(170);
+        namePanel.setTranslateX(-400);
+        namePanel.setTranslateY(220);
+        
+        name = new Text("Name");
+        name.setFont(Font.font(24));         
+        
+        role = new Text("Role");
+        role.setFont(Font.font(24));
+        
+        namePanel.getChildren().addAll(name, role);
+    }
+    
+    
     /**
      * Adds the voting menu to the scene
      * @param msg the message that will appear in the voting menu
@@ -271,7 +295,7 @@ public class PlayerGI extends Application {
     public void loadGame() {
         Platform.runLater(() -> {
             root.getChildren().clear();
-            root.getChildren().add(gamePane);
+            root.getChildren().addAll(gamePane, namePanel);
             waitAnimation.stop();
         });
     }
@@ -291,8 +315,12 @@ public class PlayerGI extends Application {
                 if(playerCard.getPlayerName().toLowerCase().
                         equals(player.toLowerCase())) {                    
                     tile = (Pane)(playerCard.getParent());
-                    tile.getChildren().add(new ImageView("playergi/images/dead.png"));
+                    tile.getChildren().add(new ImageView("mafia/playergi/images/dead.png"));
                 }
+            }
+            
+            if(player.equals(name.getText())) {
+                lock();
             }
         });
     }
@@ -311,7 +339,7 @@ public class PlayerGI extends Application {
                 messages.remove(0);
             }
 
-            messages.add(new Message(text));
+            messages.add(new Message(text));                        
         });
     }
     
@@ -325,6 +353,19 @@ public class PlayerGI extends Application {
         loginErrorMessage.setText(msg);
     }
     
+    
+    public void lock() {
+        
+        chatInput.setDisable(true);
+
+        for(PlayerCard playerCard : playerCards) {
+            playerCard.setOnMouseClicked(null);
+        }
+
+        name.setFill(Color.RED);
+        role.setFill(Color.RED);
+    }
+    
         
     /**
      * Creates the visual elements of the application
@@ -333,7 +374,8 @@ public class PlayerGI extends Application {
                     
         createVoteMenu();   
         createLoginPage();
-        createWaitScreen();               
+        createWaitScreen();  
+        createNamePanel();
                         
         root = new StackPane(loginPane);
         scene = new Scene(root, 1000, 680);
@@ -378,13 +420,16 @@ public class PlayerGI extends Application {
         
     }
     
-    public void commenceGame(String role, String[] players) {
+    public void commenceGame(String name, String role, String[] players) {
         
         createPlayerCards(players);
         createChatBox(); 
         
-        printMessage("The game has started.");
-        printMessage("You are " + (role.equals("Assassin") ? "the " : "a ") + role + ".");
+        printMessage("> The game has started.");
+        printMessage("> You are " + (role.equals("Assassin") ? "the " : "a ") + role + ".");
+        
+        this.name.setText(name);
+        this.role.setText(role);
         
         gamePane = new VBox(30);
         gamePane.setPrefSize(1000, 300);            
@@ -393,7 +438,7 @@ public class PlayerGI extends Application {
         
         for(PlayerCard playerCard : playerCards) {
             playerCard.setOnMouseClicked(ev -> {
-                
+                client.clickEvent(playerCard.getPlayerName());
             });
         }
         
@@ -403,11 +448,13 @@ public class PlayerGI extends Application {
         });
         
         voteGuilty.setOnAction(ev -> {
-            
+            client.clickEvent("guilty");
+            closeVoteMenu();
         });
         
         voteNotGuilty.setOnAction(ev -> {
-            
+            client.clickEvent("not_guilty");
+            closeVoteMenu();
         });
     }
     

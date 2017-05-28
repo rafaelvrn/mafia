@@ -53,6 +53,11 @@ public class Client {
         output.println("msg " + msg);
     }
     
+    public void clickEvent(String target) {
+        output.println("cmd");
+        output.println("click " + target);
+    }
+    
     private class ServerListener extends Thread {
         
         @Override
@@ -68,10 +73,19 @@ public class Client {
                             message = input.readLine();
                             playergi.printMessage(message);
                             break;
+                        case "kill":
+                            String target = input.readLine();
+                            playergi.killPlayer(target);
+                            break;               
+                        case "vote":
+                            String accusedPlayer = input.readLine();
+                            playergi.openVoteMenu("Is " + accusedPlayer + " guilty?");
+                            break;
                         case "init":
+                            String name = input.readLine();
                             String role = input.readLine();
                             String playerList = input.readLine();
-                            playergi.commenceGame(role, playerList.split(" +"));
+                            playergi.commenceGame(name, role, playerList.split(" +"));
                             playergi.loadGame();
                             break;
                         case "invalid_credentials":
