@@ -463,6 +463,11 @@ public class PlayerGI extends Application {
         loginPasswordField.clear();
     }
     
+    @Override
+    public void stop() {
+        client.stop();
+    }
+    
     public static void main(String[] args) {
                         
         launch(args);     

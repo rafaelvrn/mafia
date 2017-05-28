@@ -32,7 +32,7 @@ public class Server {
     
     private GameHandler gameHandler;        
     
-    private final int maxPlayers = 4;
+    private final int maxPlayers = 3;
     
     public Server() {                
         clientHandlers = new ArrayList<>();
@@ -53,10 +53,7 @@ public class Server {
         } catch (IOException ex) {
             System.out.println("Could not open port " + port);
             return;
-        }
-        
-        
-        
+        }                        
         
         while(true) {    
             
@@ -91,12 +88,14 @@ public class Server {
         private Socket clientSocket;
         private BufferedReader input;
         private PrintWriter output;
+        private volatile boolean isRunning;
         
         private ClientHandler(Socket socket) {
             try {
                 clientSocket = socket;
                 input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                 output = new PrintWriter(clientSocket.getOutputStream(), true);
+                isRunning = true;
             } catch (IOException ex) {
                 System.out.println(ex.toString());
             }
@@ -108,7 +107,7 @@ public class Server {
             
             String username;
             String password;
-            while(true) {
+            while(isRunning) {
                 
                 String command;
                 
@@ -170,16 +169,45 @@ public class Server {
                                     output.println("reg_success");
                             }                                    
                             break;
+                        case "stop":
+                            stopHandler();
+                            break;
+                        case "echo":
+                            output.println("echo");
                         default:
                     }
-                } catch (IOException ex) {
+                } catch (Exception ex) {
                     System.out.println(ex.toString());
+                    stopHandler();
+                } 
+            }     
+            try {
+                this.input.close();
+                this.clientSocket.close();
+            } catch(IOException ex) {
+                System.out.println(ex.toString());
+            }
+            
+            synchronized(clientHandlers) {
+                clientHandlers.remove(this);
+            }
+            synchronized(connectedClients) {
+                if(connectedClients.containsKey(this)) {                    
+                    connectedClients.remove(this);
+                    if(gameHandler != null) {
+                        gameHandler.disconnect(this);
+                    }
                 }
             }
+            
         }
         
         public void sendMessage(String response) {
             output.println(response);
+        }
+        
+        private void stopHandler() {
+            isRunning = false;
         }
     }
     
@@ -245,7 +273,7 @@ public class Server {
                 case "click":
                     content = parser.next();
                     handleClickEvent(client, content);
-                    break;
+                    break;                
                 default:
             }
         }
@@ -276,6 +304,15 @@ public class Server {
             for(ClientHandler player : players) {
                 player.sendMessage("kill");
                 player.sendMessage(target);                
+            }
+        }
+        
+        private void disconnect(ClientHandler client) {
+            synchronized(this) {
+                if(playersAlive.containsKey(client)) {
+                    broadcastMessage("A player has been disonnected. Terminating game.");
+                    gameIsOver = true;
+                }
             }
         }
         
