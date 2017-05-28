@@ -1,7 +1,7 @@
 
-package playergi;
+package mafia.playergi;
 
-import client.GameClient;
+import mafia.client.GameClient;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +35,7 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import mafia.client.Client;
 
 
 public class PlayerGI extends Application {
@@ -48,6 +49,7 @@ public class PlayerGI extends Application {
     private VBox chatPane;
     private VBox chatBox;
     private TextField chatInput;
+    private ScrollPane chatScrollPane;
     
     private StackPane votePane;
     private Text voteMessage;
@@ -67,17 +69,20 @@ public class PlayerGI extends Application {
     private Text waitText;
     private ScaleTransition waitAnimation;
     
-    private Scene scene;
+    private VBox namePanel;
+    private Text name;
+    private Text role;
     
-    private static List<String> players;
-    GameClient client;               
+    private Scene scene;
+        
+    Client client;               
     
     /**
      * Creates a list of player cards, containing the names of the players
      * 
      * @param playerNames the names of the players
      */
-    public void createPlayerCards(List<String> playerNames) {
+    public void createPlayerCards(String[] playerNames) {
         
         playerCards = new ArrayList<>();
         
@@ -111,9 +116,7 @@ public class PlayerGI extends Application {
      * Creates a chat box and a chat input field
      */
     public void createChatBox() {
-        
-        ScrollPane scrollPane;
-        
+                       
         chatPane = new VBox();           
         chatPane.setAlignment(Pos.CENTER);        
                         
@@ -122,17 +125,17 @@ public class PlayerGI extends Application {
         chatInput = new TextField();
         chatInput.setMaxWidth(600);
         
-        scrollPane = new ScrollPane();
-        scrollPane.setPrefHeight(250);
-        scrollPane.setBorder(new Border(new BorderStroke(Color.BLACK, 
+        chatScrollPane = new ScrollPane();
+        chatScrollPane.setPrefHeight(250);
+        chatScrollPane.setBorder(new Border(new BorderStroke(Color.BLACK, 
                 BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderWidths.DEFAULT)));
-        scrollPane.setMaxWidth(600);
-        scrollPane.setContent(chatBox);
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        
-       
-        chatPane.getChildren().addAll(scrollPane, chatInput);
+        chatScrollPane.setMaxWidth(600);
+        chatScrollPane.setContent(chatBox);
+        chatScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        chatScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        chatScrollPane.vvalueProperty().bind(chatBox.heightProperty());
+               
+        chatPane.getChildren().addAll(chatScrollPane, chatInput);
     }
     
     
@@ -231,6 +234,27 @@ public class PlayerGI extends Application {
     }
     
     
+    public void createNamePanel() {
+        
+        namePanel = new VBox();
+        namePanel.setAlignment(Pos.CENTER);
+        namePanel.setBorder(new Border(new BorderStroke(Color.BLACK, 
+                BorderStrokeStyle.SOLID, CornerRadii.EMPTY, BorderWidths.DEFAULT)));
+        namePanel.setMaxHeight(100);
+        namePanel.setMaxWidth(170);
+        namePanel.setTranslateX(-400);
+        namePanel.setTranslateY(220);
+        
+        name = new Text("Name");
+        name.setFont(Font.font(24));         
+        
+        role = new Text("Role");
+        role.setFont(Font.font(24));
+        
+        namePanel.getChildren().addAll(name, role);
+    }
+    
+    
     /**
      * Adds the voting menu to the scene
      * @param msg the message that will appear in the voting menu
@@ -271,7 +295,7 @@ public class PlayerGI extends Application {
     public void loadGame() {
         Platform.runLater(() -> {
             root.getChildren().clear();
-            root.getChildren().add(gamePane);
+            root.getChildren().addAll(gamePane, namePanel);
             waitAnimation.stop();
         });
     }
@@ -291,8 +315,12 @@ public class PlayerGI extends Application {
                 if(playerCard.getPlayerName().toLowerCase().
                         equals(player.toLowerCase())) {                    
                     tile = (Pane)(playerCard.getParent());
-                    tile.getChildren().add(new ImageView("playergi/images/dead.png"));
+                    tile.getChildren().add(new ImageView("mafia/playergi/images/dead.png"));
                 }
+            }
+            
+            if(player.equals(name.getText())) {
+                lock();
             }
         });
     }
@@ -307,11 +335,11 @@ public class PlayerGI extends Application {
         Platform.runLater(() -> {
             ObservableList<Node> messages = chatBox.getChildren();
         
-            if(messages.size() >= 30) {
+            if(messages.size() >= 40) {
                 messages.remove(0);
             }
 
-            messages.add(new Message(text));
+            messages.add(new Message(text));                        
         });
     }
     
@@ -325,23 +353,30 @@ public class PlayerGI extends Application {
         loginErrorMessage.setText(msg);
     }
     
+    
+    public void lock() {
+        
+        chatInput.setDisable(true);
+
+        for(PlayerCard playerCard : playerCards) {
+            playerCard.setOnMouseClicked(null);
+        }
+
+        name.setFill(Color.RED);
+        role.setFill(Color.RED);
+    }
+    
         
     /**
      * Creates the visual elements of the application
      */
-    public void buildGUI() {                               
-        
-        createPlayerCards(players);
-        createChatBox();     
+    public void buildGUI() {                              
+                    
         createVoteMenu();   
         createLoginPage();
-        createWaitScreen();
-                
-        gamePane = new VBox(30);
-        gamePane.setPrefSize(1000, 300);            
-        
-        gamePane.getChildren().addAll(playerCardPane, chatPane);
-                
+        createWaitScreen();  
+        createNamePanel();
+                        
         root = new StackPane(loginPane);
         scene = new Scene(root, 1000, 680);
     }
@@ -357,66 +392,79 @@ public class PlayerGI extends Application {
         stage.show();
         
         try{                               
-            client = new GameClient("localhost", 51438);   
+            client = new Client(this);   
             
             loginSubmit.setOnAction(ev -> {
-                int status = client.Register(loginUserField.getText().trim() + " " 
-                        + loginPasswordField.getText().trim());
-
-                if(status == 1) {
-                    showWaitScreen();
-                }
-                else {
-                    printLoginErrorMessage("Incorrect username and/or password");
-                }
+                client.login(loginUserField.getText().trim(), 
+                         loginPasswordField.getText().trim());
+                flush();
             });
         
             registerButton.setOnAction(ev -> {
-                int status = client.Login(loginUserField.getText() + " " 
-                        + loginPasswordField.getText());
-
-                if(status == 1) {
-                    printLoginErrorMessage("Registration was successful");
-                }
-                else {
-                    printLoginErrorMessage("Username already exists");
-                }
+                client.register(loginUserField.getText(),
+                        loginPasswordField.getText()); 
+                flush();
             });
         } catch(IOException ex) {
-            printLoginErrorMessage("Cannot connect to server");
+            
+            loginSubmit.setOnAction(ev -> {
+                printLoginErrorMessage("Cannot connect to server");     
+                flush();
+            });
+        
+            registerButton.setOnAction(ev -> {
+                printLoginErrorMessage("Cannot connect to server");     
+                flush();
+            });
+        }                       
+        
+    }
+    
+    public void commenceGame(String name, String role, String[] players) {
+        
+        createPlayerCards(players);
+        createChatBox(); 
+        
+        printMessage("> The game has started.");
+        printMessage("> You are " + (role.equals("Assassin") ? "the " : "a ") + role + ".");
+        
+        this.name.setText(name);
+        this.role.setText(role);
+        
+        gamePane = new VBox(30);
+        gamePane.setPrefSize(1000, 300);            
+        
+        gamePane.getChildren().addAll(playerCardPane, chatPane);
+        
+        for(PlayerCard playerCard : playerCards) {
+            playerCard.setOnMouseClicked(ev -> {
+                client.clickEvent(playerCard.getPlayerName());
+            });
         }
         
-        
-        
-        
         chatInput.setOnAction(ev -> {
-            
+            client.sendMessage(chatInput.getText());
+            chatInput.clear();
         });
         
         voteGuilty.setOnAction(ev -> {
-            
+            client.clickEvent("guilty");
+            closeVoteMenu();
         });
         
         voteNotGuilty.setOnAction(ev -> {
-            
+            client.clickEvent("not_guilty");
+            closeVoteMenu();
         });
-        /*
-        for(PlayerCard playerCard : playerCards) {
-            playerCard.setOnMouseClicked(ev -> {
-                client.sendMsg(playerCard.getPlayerName());
-            });
-        }*/
     }
     
+    public void flush() {
+        loginUserField.clear();
+        loginPasswordField.clear();
+    }
     
     public static void main(String[] args) {
-        
-        players = new ArrayList<>();
-        
-        for(int i = 1; i <= 8; i++) {
-            players.add("Player " + i);
-        }
-        
+                        
         launch(args);     
         
     }

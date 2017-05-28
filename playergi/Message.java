@@ -1,5 +1,5 @@
 
-package playergi;
+package mafia.playergi;
 
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;

@@ -1,22 +1,17 @@
-package server;
-import static server.GameServer.con;
+package mafia.server;
+
+//import static server.GameServer.con;
 import java.io.* ;
-import java.net.Socket;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.Scanner;
-import chatServerPackage.*;
 
 import java.sql.*; 
-import java.net.*;
 
 
 public class GameServer {

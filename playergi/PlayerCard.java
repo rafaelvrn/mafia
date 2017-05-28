@@ -1,5 +1,5 @@
 
-package playergi;
+package mafia.playergi;
 
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;

@@ -1,5 +1,5 @@
 
-package playergi;
+package mafia.playergi;
 
 import java.util.Scanner;
 
