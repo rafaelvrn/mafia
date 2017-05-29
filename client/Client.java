@@ -6,8 +6,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import mafia.playergi.PlayerGI;
 
 
@@ -20,6 +18,7 @@ public class Client {
     private final BufferedReader input;
     private final String ip;
     private final int port;
+    private volatile boolean isRunning;
     
     public Client(PlayerGI playergi) throws IOException {
         
@@ -27,6 +26,7 @@ public class Client {
                         
         ip = "localhost";
         port = 50000;
+        isRunning = true;
         
         clientSocket = new Socket(ip, port);
         output = new PrintWriter(clientSocket.getOutputStream(), true);
@@ -58,13 +58,18 @@ public class Client {
         output.println("click " + target);
     }
     
+    public void stop() {
+        isRunning = false;
+        output.println("echo");
+    }
+    
     private class ServerListener extends Thread {
         
         @Override
         public void run() {
             String cmd;
             String message;
-            while(true) {
+            while(isRunning) {
                 try {
                     cmd = input.readLine();
                     
@@ -109,9 +114,18 @@ public class Client {
                             break;
                         default:
                     }
-                } catch (IOException ex) {
+                } catch (Exception ex) {
                     System.out.println(ex.toString());
-                }
+                    Client.this.stop();
+                } 
+            }
+            output.println("stop");
+            try {
+                input.close();
+                output.close();
+                clientSocket.close();
+            } catch(IOException ioex) {
+                System.out.println(ioex.toString());
             }
         }
     }
