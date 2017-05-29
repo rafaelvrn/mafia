@@ -1,10 +1,8 @@
 
 package mafia.playergi;
 
-import mafia.client.GameClient;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 import javafx.animation.Animation;
 import javafx.animation.ScaleTransition;
 import javafx.application.Application;

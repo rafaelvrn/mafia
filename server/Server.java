@@ -8,10 +8,8 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
@@ -32,7 +30,7 @@ public class Server {
     
     private GameHandler gameHandler;        
     
-    private final int maxPlayers = 3;
+    private final int maxPlayers = 5;
     
     public Server() {                
         clientHandlers = new ArrayList<>();
@@ -438,6 +436,7 @@ public class Server {
                     } else if(playersAlive.containsKey(entry.getKey())) {
                         score = 2;
                     }
+                    connection.updateScore(entry.getValue(), score);
                     entry.getKey().sendMessage("msg");
                     entry.getKey().sendMessage("You received " + score + " points.");                  
                 }
@@ -450,6 +449,7 @@ public class Server {
                     } else if(playersAlive.containsKey(entry.getKey())) {
                         score = 7;
                     }
+                    connection.updateScore(entry.getValue(), score);
                     entry.getKey().sendMessage("msg");
                     entry.getKey().sendMessage("You received " + score + " points.");                  
                 }
@@ -465,5 +465,10 @@ public class Server {
             broadcastMessage("> It is now daytime. Vote who the killer is.");
             isNighttime = false;
         }
+    }
+    
+    @Override
+    public void finalize() throws Throwable {
+        connection.close();
     }
 }
